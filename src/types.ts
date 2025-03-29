@@ -25,10 +25,18 @@ export interface ListPullRequestResponse {
   }
   requested_reviewers:{
     login: string;
-  }[]
+  }[];
+  updated_at: string;
 }
 
 export interface GetContributorsResponse {
   login: string;
   contributions: number;
+}
+
+export interface ListUserRepositoriesResponse {
+  name: string;
+  owner: {
+    login: string;
+  }
 }

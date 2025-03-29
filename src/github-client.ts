@@ -1,7 +1,8 @@
 import axios, {AxiosInstance} from 'axios'
 import jwt from 'jsonwebtoken';
 import fs from 'fs'
-import {GetContributorsResponse, ListPullRequestResponse} from "./types";
+import {GetContributorsResponse, ListPullRequestResponse, ListUserRepositoriesResponse} from "./types";
+import {log} from "./logger";
 
 export class GithubClient {
   httpClient: AxiosInstance;
@@ -15,14 +16,14 @@ export class GithubClient {
     });
 
     this.httpClient.interceptors.request.use(function (config) {
-      console.log(`[request] ${(config.method || '').toUpperCase()} ${config.url}`);
+      log.info(`[request] ${(config.method || '').toUpperCase()} ${config.url}`);
       return config;
     }, function (error) {
       return Promise.reject(error)
     });
 
     this.httpClient.interceptors.response.use(function (response) {
-      console.log(`[response] ${(response.config.method || '').toUpperCase()} ${response.config.url} - ${response.status} - ${response.statusText}`);
+      log.info(`[response] ${(response.config.method || '').toUpperCase()} ${response.config.url} - ${response.status} - ${response.statusText}`);
       return response;
     }, function (error) {
       return Promise.reject(error);
@@ -40,21 +41,6 @@ export class GithubClient {
     const privateKey = fs.readFileSync(process.env.GH_PRIVATE_KEY_PATH as string, 'utf8');
     return jwt.sign(payload, privateKey, {algorithm: 'RS256'});
   }
-
-  // async getInstallationId(org: string, repo: string): Promise<number> {
-  //   const response = await this.httpClient.get(
-  //     `/repos/${org}/${repo}/installation`,
-  //     {
-  //       headers: {
-  //         'Accept': 'application/vnd.github+json',
-  //         'Authorization': `Bearer ${this.generateJwt()}`,
-  //         'X-GitHub-Api-Version': '2022-11-28'
-  //       }
-  //     }
-  //   );
-  //
-  //   return response.data.id;
-  // }
 
   async getAccessToken(): Promise<string> {
     if (!this.accessToken) {
@@ -100,7 +86,7 @@ export class GithubClient {
     });
   }
 
-  async listPullRequests(owner: string, repo: string): Promise<{owner: string; repo: string; issueNum: number; reviewers: string[]}[]> {
+  async listPullRequests(owner: string, repo: string): Promise<{owner: string; repo: string; issueNum: number; reviewers: string[]; updatedAt: Date;}[]> {
     const response = await this.httpClient.get<ListPullRequestResponse[]>(`/repos/${owner}/${repo}/pulls`, {
       headers: {
         "Accept": "application/vnd.github+json",
@@ -113,7 +99,21 @@ export class GithubClient {
       owner: d.head.repo.owner.login,
       repo: d.head.repo.name,
       issueNum: d.number,
-      reviewers: d.requested_reviewers.map(r => r.login)
+      reviewers: d.requested_reviewers.map(r => r.login),
+      updatedAt: new Date(d.updated_at)
     }));
+  }
+
+  async listUserRepositories(): Promise<{owner: string; name: string;}[]> {
+    const username = process.env.GH_USERNAME;
+    const response = await this.httpClient.get<ListUserRepositoriesResponse[]>(`/users/${username}/repos`, {
+      headers: {
+        "Accept": "application/vnd.github+json",
+        "Authorization": `Bearer ${await this.getAccessToken()}`,
+        "X-GitHub-Api-Version": "2022-11-28"
+      },
+    });
+
+    return response.data.map(d => ({owner: d.owner.login, name: d.name}));
   }
 }

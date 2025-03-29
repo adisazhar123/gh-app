@@ -2,8 +2,11 @@ import express, { Express, Request, Response } from "express";
 import dotenv from "dotenv";
 import SmeeClient from 'smee-client'
 import webhookRoutes from './routes'
-const bodyParser = require('body-parser')
-const winston = require('winston'), expressWinston = require('express-winston');
+import {startBackgroundJobs} from "./webhook-events";
+import {log} from "./logger";
+import bodyParser from 'body-parser'
+import winston from 'winston';
+import expressWinston from 'express-winston';
 
 
 dotenv.config();
@@ -13,7 +16,8 @@ const port = process.env.PORT || 5000;
 
 const smee = new SmeeClient({
   source: process.env.SMEE_SOURCE || '',
-  target: `http://localhost:${port}/webhook`
+  target: `http://localhost:${port}/webhook`,
+  logger: log,
 });
 
 smee.start();
@@ -48,13 +52,16 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 app.listen(port, () => {
-  console.log(`[server]: Server is running at http://localhost:${port}`);
+  log.info(`[server]: Server is running at http://localhost:${port}`);
 });
 
 app.use(function (err, req, res, next) {
   if (res.headersSent) {
     return next(err)
   }
+  log.error('error occurred', err);
   res.status(500)
   res.render('error', { error: err })
 });
+
+startBackgroundJobs();
