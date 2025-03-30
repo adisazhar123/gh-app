@@ -11,6 +11,9 @@ export interface PullRequestOpened {
     };
     number: number;
   }
+  sender: {
+    login: string;
+  }
 }
 
 export interface ListPullRequestResponse {

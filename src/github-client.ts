@@ -2,7 +2,7 @@ import axios, {AxiosInstance} from 'axios'
 import jwt from 'jsonwebtoken';
 import fs from 'fs'
 import {GetContributorsResponse, ListPullRequestResponse, ListUserRepositoriesResponse} from "./types";
-import {log} from "./logger";
+import {logger} from "./logger";
 
 export class GithubClient {
   httpClient: AxiosInstance;
@@ -16,14 +16,14 @@ export class GithubClient {
     });
 
     this.httpClient.interceptors.request.use(function (config) {
-      log.info(`[request] ${(config.method || '').toUpperCase()} ${config.url}`);
+      logger.info(`[request] ${(config.method || '').toUpperCase()} ${config.url}`);
       return config;
     }, function (error) {
       return Promise.reject(error)
     });
 
     this.httpClient.interceptors.response.use(function (response) {
-      log.info(`[response] ${(response.config.method || '').toUpperCase()} ${response.config.url} - ${response.status} - ${response.statusText}`);
+      logger.info(`[response] ${(response.config.method || '').toUpperCase()} ${response.config.url} - ${response.status} - ${response.statusText}`);
       return response;
     }, function (error) {
       return Promise.reject(error);
@@ -62,7 +62,7 @@ export class GithubClient {
     return this.accessToken;
   }
 
-  async getRepositoryContributors(owner: string, repo: string): Promise<string[]> {
+  async getRepositoryContributors(owner: string, repo: string): Promise<{login: string; contributions: number}[]> {
     const response = await this.httpClient.get<GetContributorsResponse[]>(`/repos/${owner}/${repo}/contributors`, {
       headers: {
         "Accept": "application/vnd.github+json",
@@ -71,7 +71,7 @@ export class GithubClient {
       }
     });
 
-    return response.data.map(d => d.login);
+    return response.data.map(d => ({ login: d.login, contributions: d.contributions }));
   }
 
   async createIssueComment(owner: string, repo: string, issueNum: number, message: string) {
