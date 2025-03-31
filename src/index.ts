@@ -15,13 +15,13 @@ logger.info(`NODE_ENV is ${process.env.NODE_ENV}`);
 const app: Express = express();
 const port = process.env.PORT || 5000;
 
-const smee = new SmeeClient({
-  source: process.env.SMEE_SOURCE || '',
-  target: `http://localhost:${port}/webhook`,
-  logger: logger,
-});
-
-smee.start();
+if (process.env.NODE_ENV === 'development') {
+  new SmeeClient({
+    source: process.env.SMEE_SOURCE || '',
+    target: `http://localhost:${port}/webhook`,
+    logger: logger,
+  }).start();
+}
 
 app.use(bodyParser.urlencoded())
 app.use(bodyParser.json())
